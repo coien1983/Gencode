@@ -1,0 +1,2 @@
+# Gencode
+gen gin project 
