@@ -73,12 +73,34 @@ func ControllerInit(controllerName string) {
 		return
 	}
 
+	// 要检测的目录路径
+	dirPath := "controller"
+
+	// 使用Stat函数获取目录信息
+	_, err = os.Stat(dirPath)
+
+	// 判断目录是否存在
+	if os.IsNotExist(err) {
+		//如果文件夹不存在，创建
+		// 创建目录
+		err = os.Mkdir(dirPath, 0755)
+		if err != nil {
+			fmt.Println("创建目录失败：", err)
+			return
+		}
+	} else if err != nil {
+		fmt.Println("发生错误：", err)
+		return
+	} else {
+
+	}
+
 	projectName := filepath.Base(dir)
 	// 移除换行符
 	controllerName = strcase.ToCamel(strings.ToLower(controllerName))
 
 	//判断控制器文件是否存在
-	isExist, err := IsFileExist(fmt.Sprintf("controllers/%sController.go", controllerName))
+	isExist, err := IsFileExist(fmt.Sprintf("controller/%sController.go", controllerName))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -144,7 +166,7 @@ func (c *%sController) DemoHandler(ctx *gin.Context) {
 	controllerContent = fmt.Sprintf(controllerContent, contentArr...)
 
 	BaseControllerName := controllerName
-	controllerName = fmt.Sprintf("%sController.go", controllerName)
+	controllerName = fmt.Sprintf("controller/%sController.go", controllerName)
 	err = os.WriteFile(controllerName, []byte(controllerContent), 0644)
 	if err != nil {
 		fmt.Println("控制器生成失败")
@@ -189,6 +211,20 @@ func (c *%sController) DemoHandler(ctx *gin.Context) {
 		}
 	}
 
+	isResExist, err := IsFileExist("services")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if !isResExist {
+		err := os.Mkdir("services", 0755)
+		if err != nil {
+			fmt.Println("Failed to create directory:", err)
+			return
+		}
+	}
+
 	//生成service文件
 	isExist, err = IsFileExist(fmt.Sprintf("services/%sService.go", controllerName))
 	if err != nil {
@@ -219,6 +255,11 @@ type DemoService struct {
 	DB *gorm.DB
 }
 
+func (d *DemoService) Demo(ctx *gin.Context, params requests.DemoReq) (*responses.DemoResp) {
+	//TODO you can write your service code here
+	panic("do something")
+}
+
 func NewDemoService(db *gorm.DB) IDemoService {
 	return &DemoService{DB: db}
 }
@@ -239,10 +280,10 @@ func NewDemoService(db *gorm.DB) IDemoService {
 
 func InitBaseResponse() error {
 	content := "package responses\n\nimport (\n\t\"github.com/gin-gonic/gin\"\n\t\"net/http\"\n)\n\ntype ResponseData struct {\n\tCode string      `json:\"code\" example:\"10000\"` //响应码\n\tMsg  string      `json:\"msg\" example:\"操作成功\"`   //响应信息\n\tData interface{} `json:\"data,omitempty\"`\n}\n\n// ResponseError 错误响应\nfunc ResponseError(c *gin.Context, code string, message string) {\n\tc.JSON(http.StatusOK, &ResponseData{\n\t\tCode: code,\n\t\tMsg:  message,\n\t\tData: nil,\n\t})\n}\n\nfunc ResponseSuccess(c *gin.Context, data interface{}) {\n\tc.JSON(http.StatusOK, &ResponseData{\n\t\tCode: \"000000\",\n\t\tMsg:  \"操作成功\",\n\t\tData: data,\n\t})\n}\n\n"
-	err := os.WriteFile("responses/base_response.go", []byte(content), 0644)
+	err := os.WriteFile("responses/BaseResp.go", []byte(content), 0644)
 	if err != nil {
-		fmt.Println("base_response生成失败")
-		return errors.New("base_response生成失败")
+		fmt.Println("BaseResp生成失败")
+		return errors.New("BaseResp生成失败")
 	}
 
 	return nil
@@ -358,13 +399,13 @@ jobs: stores timer jobs
 	return nil
 }
 
-func InitMain() error {
+func InitMain(projectName string) error {
 	content := `package main
 
 import (
-	"$project_name/docs"
-	"$project_name/routers"
-	"$project_name/sysinit"
+	"%s/docs"
+	"%s/routers"
+	"%s/sysinit"
 	"context"
 	"flag"
 	"fmt"
@@ -421,8 +462,8 @@ func main() {
 	r := router.RouterInit()
 	if sysinit.Conf.Mode == "test" || sysinit.Conf.Mode == "dev" {
 
-		docs.SwaggerInfo.Title = "agent_shop Api"
-		docs.SwaggerInfo.Description = "This is JiHe Api"
+		docs.SwaggerInfo.Title = "%s Api"
+		docs.SwaggerInfo.Description = "This is %s Api"
 		docs.SwaggerInfo.Version = "1.0"
 		docs.SwaggerInfo.Host = fmt.Sprintf("%s:%d", "localhost", 7050)
 		docs.SwaggerInfo.BasePath = "/v1"
@@ -462,6 +503,7 @@ func main() {
 	zap.L().Info("Server existing")
 }
 `
+	content = fmt.Sprintf(content, projectName, projectName, projectName, projectName, projectName)
 
 	err := os.WriteFile("main.go", []byte(content), 0644)
 	if err != nil {
@@ -570,13 +612,13 @@ func CORS() gin.HandlerFunc {
 }
 
 // InitRouterInit 路由配置初始化
-func InitRouterInit() error {
+func InitRouterInit(projectName string) error {
 	content := `package router
 
 import (
-	api "$project_name/controllers"
-	"$project_name/middlewares"
-	"$project_name/sysinit"
+	api "%s/controllers"
+	"%s/middlewares"
+	"%s/sysinit"
 	"github.com/gin-gonic/gin"
 )
 
@@ -600,7 +642,7 @@ func RouterInit() *gin.Engine {
 	return ro
 }
 `
-
+	content = fmt.Sprintf(content, projectName, projectName, projectName)
 	err := os.WriteFile("routers/router.go", []byte(content), 0644)
 	if err != nil {
 		fmt.Println("路由配置初始化失败")
@@ -1053,7 +1095,7 @@ port: %s
 # 日志配置
 LogC:
   level: "info"
-  filename: "$project_name.log"
+  filename: "%s.log"
   max_size: 200
   max_age: 30
   max_backups: 7
@@ -1093,7 +1135,7 @@ QiNiuC:
   pic_domain: ""
   bucket: ""
 `
-	content = fmt.Sprintf(content, projectName, portName)
+	content = fmt.Sprintf(content, projectName, portName, projectName)
 
 	err := os.WriteFile("config/config.yaml", []byte(content), 0644)
 	if err != nil {
@@ -1251,7 +1293,7 @@ func ProjectInit(projectDe string) {
 	}
 
 	//路由初始化
-	err = InitRouterInit()
+	err = InitRouterInit(projectName)
 	if err != nil {
 		return
 	}
@@ -1275,7 +1317,7 @@ func ProjectInit(projectDe string) {
 	}
 
 	//生成主函数
-	err = InitMain()
+	err = InitMain(projectName)
 	if err != nil {
 		return
 	}
