@@ -19,12 +19,14 @@ func main() {
 	controllerName := flag.String("c", "", "控制器名称")
 	serviceName := flag.String("s", "", "service名称")
 	repositoryName := flag.String("r", "", "repository名称")
+	testName := flag.String("t", "", "测试名称")
 	flag.Parse()
 
 	if *projectName != "" {
 		fmt.Println("项目名称:", *projectName)
 		//项目初始化
 		ProjectInit(*projectName)
+		return
 	} else {
 		//fmt.Println("未提供项目名称")
 	}
@@ -33,6 +35,7 @@ func main() {
 		fmt.Println("控制器名称:", *controllerName)
 		//创建控制器
 		ControllerInit(*controllerName)
+		return
 	} else {
 		//fmt.Println("未提供controller名称")
 	}
@@ -47,6 +50,10 @@ func main() {
 		fmt.Println("repository名称:", *repositoryName)
 	} else {
 		//fmt.Println("未提供repository名称")
+	}
+
+	if *testName != "" {
+		fmt.Println("测试名称", *testName)
 	}
 }
 
@@ -279,27 +286,7 @@ func InitRunSh(projectName string) error {
 }
 
 func InitReadMe(projectName string) error {
-	content := `# %s
-
-config: stores configuration functions
-common: stores helper functions
-docs: stores Swagger documentation
-codes: stores error codes
-enums: stores constant codes
-hooks: stores asynchronous hooks
-middleware: stores middleware
-controller: stores controllers
-model: stores database models
-pkg: stores third-party packages
-repository: stores database interaction layer
-requests: stores request models
-responses: stores response models
-routers: stores routers
-sysinit: stores system initialization
-services: stores service layer
-jobs: stores timer jobs
-`
-
+	content := template.ReadMeTemplate
 	content = fmt.Sprintf(content, projectName)
 
 	err := os.WriteFile("README.md", []byte(content), 0644)
@@ -483,6 +470,7 @@ func InitDir(projectName string) error {
 		"github.com/natefinch/lumberjack",
 		"go.uber.org/zap",
 		"go.uber.org/zap/zapcore",
+		//"github.com/onsi/ginkgo/v2",
 	}
 
 	for _, dependency := range dependencies {
@@ -524,6 +512,7 @@ func InitDir(projectName string) error {
 		"sysinit",
 		"services",
 		"jobs",
+		"test",
 	}
 
 	for _, dir := range directories {
